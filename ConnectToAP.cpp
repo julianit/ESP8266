@@ -69,23 +69,36 @@ void ICACHE_FLASH_ATTR user_rf_pre_init(void)
 {
 }
 
+/* ICACHE_FLASH_ATTR - instruction that force 
+   to  save the function in the flash
+   This functions check if the ESP is connected to the acces point.
+   if it is connected we can see the IP Address on the UART terminal,
+   otherwise we re-start a timer and call the function again.
+   
+   So the function is in a loop until the ESP connects to AP 
+  */
 void ICACHE_FLASH_ATTR network_check_ip(void)
 {
     struct ip_info ipconfig;
-    os_timer_disarm(&network_timer);
+	//Disarm the timer
+   	os_timer_disarm(&network_timer);
     wifi_get_ip_info(STATION_IF, &ipconfig);
-	
+	//Check if the ESP is connected 
     if (wifi_station_get_connect_status() == STATION_GOT_IP && ipconfig.ip.addr != 0)
     {
 		os_printf("IP found\n");
     }
     else
     {
-		// This is printed until the ESP get an IP Address 
+		// If the ESP is not connected 
 		os_printf("No IP found\n");
+		//Disarm the timer
         os_timer_disarm(&network_timer);
-        os_timer_setfn(&network_timer, (os_timer_func_t *)network_check_ip, NULL);
-        os_timer_arm(&network_timer, DELAY, 0);
+        //Associate the timer event with a function. In our case we want to 
+		// invoke the network_check_ip
+		os_timer_setfn(&network_timer, (os_timer_func_t *)network_check_ip, NULL);
+        //Start the timer
+		os_timer_arm(&network_timer, DELAY, 0);
     }
 }
 
@@ -95,11 +108,16 @@ void ICACHE_FLASH_ATTR user_init()
     char ssid[32] = "AP-NAME"; // AP name  
     char password[64] = "AP-PASSWORD"; //AP Password
     struct station_config stationConf;
-    wifi_set_opmode( STATION_MODE );
-    os_memcpy(&stationConf.ssid, ssid, 32);
+    //Set the ESP to station mode.
+	wifi_set_opmode( STATION_MODE );
+	//Copy the Access point name and password.
+	os_memcpy(&stationConf.ssid, ssid, 32);
     os_memcpy(&stationConf.password, password, 32);
-    wifi_station_set_config(&stationConf);
-    wifi_station_connect();
+    //Set the WiFi configuration
+	wifi_station_set_config(&stationConf);
+    //Try to connect to the access point (AP)
+	wifi_station_connect();
+	
     network_check_ip();
 }
 
